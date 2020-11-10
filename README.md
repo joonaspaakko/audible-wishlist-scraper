@@ -12,7 +12,7 @@ Use at your own risk. I have good intentions, but you shouldn't go copy pasting 
 
 > You don't need to know how to code or read any code to use this script. It would be preferrable, as stated above, but the only thing you need to know is how to copy & paste.
 
-1. **Copy the script** `(Ctrl+C)` into your clipboard from here: [audible wishlist scraper.js]()
+1. **Copy the script** `(Ctrl+C)` into your clipboard from here: [audible wishlist scraper.js](https://raw.githubusercontent.com/joonaspaakko/audible-wishlist-scraper/main/audible%20wishlist%20scraper.js)
 2. **Go to your Audible wishlist page.**
 	- Sort and filter the wishlist before runnign the script... if needed.
 3. **Open your browser's developer tools console.** The easy way is to right click anywhere on a website, choose `Inspect element` from the context menu and then click the `Console` tab.
