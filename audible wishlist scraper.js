@@ -1,4 +1,4 @@
-// V.1.0.
+// V.1.1.
 (function() {
   
   var slimMarkdown = false;
@@ -157,16 +157,9 @@
     
     var cover = row.find('[data-asin] [data-bc-hires]');
     if ( cover.length > 0 ) book.cover = cover.attr('src');
-
-    var sample = row.find('[data-mp3]');
-    if ( sample.length > 0 ) book.sample = sample.data('mp3');
     
     var title  = row.find('[id^="title-"]');
-    if ( title.length > 0 ) {
-      book.title = title.text().trimAll();
-      var pageUrl = title.attr('href');
-      book.page  = urlPurify( pageUrl );
-    }
+    if ( title.length > 0 ) book.title = title.text().trimAll();
     
     var authors  = row.find('> td:nth-child(3) > div > span > div > a');
     if ( authors.length > 0 ) book.authors = makeLinkArray( authors );
@@ -231,6 +224,13 @@
       if ( foundRatings ) book.ratings = foundRatings[0];
     }
     
+    var sample = row.find('[data-mp3]');
+    if ( sample.length > 0 ) book.sample = sample.data('mp3');
+    
+    if ( title.length > 0 ) {
+      var pageUrl = title.attr('href');
+      book.page  = urlPurify( pageUrl );
+    }
     // console.log( book.title );
     
     return book;
@@ -311,7 +311,7 @@
     });
     
     // HTML styling
-    html += '\n\n<style>' +
+    html = '<style>' +
       '.top-nav, .top-nav li {' +
         'margin: 0;' +
         'padding: 0;' +
@@ -366,7 +366,7 @@
       '.book .title {' +
         'margin: 0;' +
       '}' +
-    '</style>';
+    '</style> \n\n' + html;
     
     $('body').html('');
     
@@ -394,7 +394,119 @@
     
     var jsonWrapper = $('<div class="scraper-col-wrapper">').appendTo( row );
     $('<strong>JSON:</strong>').appendTo( jsonWrapper );
-    $('<textarea/>', { text: JSON.stringify(books, null, 2), css: textareaCSS }).appendTo( jsonWrapper );
+    $('<textarea/>', { text: JSON.stringify(books), css: textareaCSS }).appendTo( jsonWrapper );
+    
+    
+    get('https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js', function() {
+        
+      var linkify = function( string, url ) {
+        return '=HYPERLINK("'+ url +'";"'+ string.replace(/\"/g,'""') +'")';
+      };
+      var imagefy = function( url ) {
+        return '=IMAGE("'+ url +'")';
+      };
+      var stringify = function( prop ) {
+        return _.map(prop, function( o ) {
+          if ( !o ) {
+            return '';
+          }
+          else {
+            var bookNumbers = o.bookNumbers ? (' (book ' + o.bookNumbers + ')') : '';
+            return o.name + bookNumbers;
+          }
+        }).join(', ');
+      };
+      
+      var csvBooks = _.map(books, function( o ) {
+        
+        o.title     = linkify( o.title, o.page );
+        o.cover     = imagefy( o.cover );
+        o.authors   = stringify( o.authors );
+        o.narrators = stringify( o.narrators );
+        o.series    = stringify( o.series );
+        
+        return o;
+        
+      });
+      
+      var csv = Papa.unparse(csvBooks, {
+        quotes: true, 
+	      quoteChar: '"', 
+      });
+      
+      var csvWrapper = $('<div class="scraper-col-wrapper">').appendTo( row );
+      $('<strong>CSV (<small>google sheets</small> ):</strong>').appendTo( csvWrapper );
+      $('<textarea/>', { text: csv, css: textareaCSS }).appendTo( csvWrapper );
+      
+      
+      get("https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js", function() {
+        
+        var strongBoys = $('.scraper-col-wrapper > strong');
+        
+        strongBoys.each(function(i) {
+          
+          var strongBoy = $(this);
+          
+          var dl = $('<button>', {
+            text: 'download'
+          }).insertAfter( strongBoy );
+          
+          var dataString = dl.next('textarea').val();
+          
+          dl.on("click", function() {
+            
+            var headingText = _.camelCase( strongBoy.text() );
+            var mimeType = '';
+            var extension = '';
+            switch ( headingText ) {
+              case "markdown":
+                mimeType = 'text/markdown;charset=utf-8';
+                extension = '.md';
+                break;
+              case "html":
+                mimeType = 'text/html;charset=utf-8';
+                extension = '.html';
+                dataString = 
+                  '<!DOCTYPE html> \n' +
+                  '<html lang="en"> \n' +
+                  '<head> \n' +
+                    '<meta charset="UTF-8"> \n' +
+                    '<meta name="viewport" content="width=device-width, initial-scale=1.0"> \n' +
+                    '<title>My Audible Wishlist</title> \n' +
+                  '</head> \n' +
+                  '<body> \n\n' +
+                    dataString + '\n\n' + 
+                  '</body> \n' +
+                  '</html>';
+                break;
+              case "plainText":
+                mimeType = 'text/plain;charset=utf-8';
+                extension = '.txt';
+                break;
+              case "json":
+                mimeType = 'application/json;charset=utf-8';
+                extension = '.json';
+                dataString = JSON.stringify( books, null, 2 );
+                break;
+              case "csv":
+              case "csvGoogleSheets":
+                mimeType = 'text/csv;charset=utf-8';
+                extension = '.csv';
+                break;
+            }
+            
+            var blob = new Blob([dataString], {type: mimeType});
+            saveAs(blob, "My Audible Wishlist" + extension);
+            
+          });
+          
+          
+          
+        });
+        
+      });
+      
+    });
     
   }
   
